@@ -21,6 +21,12 @@ public class Constants {
 	public static final QName REGISTRATION_LOOKUP_KEY_QNAME = new QName(EXT_NS, "registrationLookupKey");
 	public static final ItemPath REGISTRATION_LOOKUP_KEY_PATH = new ItemPath(ObjectType.F_EXTENSION, REGISTRATION_LOOKUP_KEY_QNAME);
 
+	public static final QName CHANNEL_READ_KEY_QNAME = new QName(EXT_NS, "readKey");
+	public static final ItemPath CHANNEL_READ_KEY_PATH = new ItemPath(ObjectType.F_EXTENSION, CHANNEL_READ_KEY_QNAME);
+
+	public static final QName CHANNEL_WRITE_KEY_QNAME = new QName(EXT_NS, "writeKey");
+	public static final ItemPath CHANNEL_WRITE_KEY_PATH = new ItemPath(ObjectType.F_EXTENSION, CHANNEL_WRITE_KEY_QNAME);
+
 	public static final String RESOURCE_NAMESPACE = "http://midpoint.evolveum.com/xml/ns/public/connector/icf-1/bundle/org.forgerock.openicf.connectors.scriptedrest-connector/org.forgerock.openicf.connectors.scriptedrest.ScriptedRESTConnector";
 
 	public static final String CUSTOMERS_ROOT_OID = "b2d0e5cd-5912-448f-a550-fed22ecbf059";

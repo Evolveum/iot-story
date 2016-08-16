@@ -67,7 +67,7 @@
 					<exclusive>false</exclusive>
 					<strength>strong</strength>
 					<source>
-						<c:path>name</c:path>
+						<c:path>displayName</c:path>
 					</source>
 				</outbound>
 			</attribute>
