@@ -16,5 +16,5 @@
   -->
 
 <descriptor xmlns="http://midpoint.evolveum.com/xml/ns/public/gui/admin-1">
-    <packagesToScan>com.evolveum.smartwidgets.gui</packagesToScan>
+    <packagesToScan>com.evolveum.smartwidgets.gui.pages</packagesToScan>
 </descriptor>

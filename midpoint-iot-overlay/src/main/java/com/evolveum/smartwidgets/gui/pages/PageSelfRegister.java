@@ -17,8 +17,11 @@ package com.evolveum.smartwidgets.gui.pages;
 
 import com.evolveum.midpoint.gui.api.page.PageBase;
 import com.evolveum.midpoint.model.api.ModelExecuteOptions;
+import com.evolveum.midpoint.prism.PrismContainerValue;
+import com.evolveum.midpoint.prism.PrismObject;
 import com.evolveum.midpoint.prism.crypto.EncryptionException;
 import com.evolveum.midpoint.prism.delta.ObjectDelta;
+import com.evolveum.midpoint.prism.delta.builder.DeltaBuilder;
 import com.evolveum.midpoint.prism.path.ItemPath;
 import com.evolveum.midpoint.prism.query.ObjectQuery;
 import com.evolveum.midpoint.prism.query.builder.QueryBuilder;
@@ -28,12 +31,14 @@ import com.evolveum.midpoint.schema.result.OperationResult;
 import com.evolveum.midpoint.schema.util.ObjectTypeUtil;
 import com.evolveum.midpoint.task.api.Task;
 import com.evolveum.midpoint.util.Producer;
+import com.evolveum.midpoint.util.QNameUtil;
 import com.evolveum.midpoint.util.exception.CommonException;
 import com.evolveum.midpoint.util.exception.SystemException;
 import com.evolveum.midpoint.util.logging.LoggingUtils;
 import com.evolveum.midpoint.util.logging.Trace;
 import com.evolveum.midpoint.util.logging.TraceManager;
 import com.evolveum.midpoint.web.application.PageDescriptor;
+import com.evolveum.midpoint.web.page.login.PageLogin;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 import com.evolveum.prism.xml.ns._public.types_3.PolyStringType;
 import com.evolveum.prism.xml.ns._public.types_3.ProtectedStringType;
@@ -48,8 +53,10 @@ import org.apache.wicket.model.Model;
 import org.jetbrains.annotations.NotNull;
 
 import javax.xml.namespace.QName;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 @PageDescriptor(url = "/selfregister")
 public class PageSelfRegister extends PageBase {
@@ -67,6 +74,7 @@ public class PageSelfRegister extends PageBase {
 	private static final String DOT_CLASS = com.evolveum.midpoint.web.page.forgetpassword.PageForgetPassword.class.getName() + ".";
 	private static final String OPERATION_IS_NAME_USED = DOT_CLASS + "isNameUsed";
 	private static final String OPERATION_CREATE_OBJECTS = DOT_CLASS + "createObjects";
+	private static final String OPERATION_CHECK_TEMPLATES = DOT_CLASS + "checkTemplates";
 
 	private static final Trace LOGGER = TraceManager.getTrace(PageSelfRegister.class);
 
@@ -81,6 +89,7 @@ public class PageSelfRegister extends PageBase {
 	}
 	
 	private void initLayout() {
+
 		Form form = new Form(ID_FORM) {
 			private static final long serialVersionUID = 1L;
 
@@ -88,6 +97,9 @@ public class PageSelfRegister extends PageBase {
 			protected void onSubmit() {
 				String email = getValue(ID_EMAIL);
 				try {
+					// brutal hack: check if templates for users and orgs are correctly set up
+					checkTemplatesAreSet();
+
 					String givenName = getValue(ID_GIVEN_NAME);
 					String familyName = getValue(ID_FAMILY_NAME);
 					String organization = getValue(ID_ORGANIZATION);
@@ -111,6 +123,11 @@ public class PageSelfRegister extends PageBase {
 						error("User with the email address '" + email + "' already exists.");
 					} else {
 						createObjects(email, organization, password1, givenName, familyName, thingSpeakApiKey);
+
+						//getSecurityEnforcer().setupPreAuthenticatedSecurityContext(user);
+						//setResponsePage(getMidpointApplication().getHomePage());
+						getSession().success("Registration was successful, please log in.");
+						PageSelfRegister.this.setResponsePage(PageLogin.class);
 					}
 				} catch (RuntimeException e) {
 					LoggingUtils.logUnexpectedException(LOGGER, "Coulnd't register the customer {}", e, email);
@@ -135,20 +152,68 @@ public class PageSelfRegister extends PageBase {
 		add(form);
 	}
 
-	private Object createObjects(final String email, final String organization, final String password, final String givenName,
-			final String familyName, final String thingSpeakApiKey) {
-		return runPrivileged(new Producer<Object>() {
+	private void checkTemplatesAreSet() {
+		LOGGER.info("Checking user/org templates presence");
+		runPrivileged(new Producer<Object>() {
 			@Override
 			public Object run() {
+				Task task = createAnonymousTask(OPERATION_CHECK_TEMPLATES);
+				try {
+					SystemConfigurationType config = getModelService().getObject(
+							SystemConfigurationType.class, SystemObjectsType.SYSTEM_CONFIGURATION.value(), null, task, task.getResult()).asObjectable();
+					ObjectPolicyConfigurationType userOpc = null, orgOpc = null;
+					for (ObjectPolicyConfigurationType opc : config.getDefaultObjectPolicyConfiguration()) {
+						if (QNameUtil.match(opc.getType(), UserType.COMPLEX_TYPE)) {
+							userOpc = opc;
+						} else if (QNameUtil.match(opc.getType(), OrgType.COMPLEX_TYPE)) {
+							orgOpc = opc;
+						}
+					}
+					List<PrismContainerValue<ObjectPolicyConfigurationType>> valuesToAdd = new ArrayList<>();
+					if (userOpc == null) {
+						ObjectPolicyConfigurationType u = new ObjectPolicyConfigurationType(getPrismContext());
+						u.setType(UserType.COMPLEX_TYPE);
+						u.setObjectTemplateRef(ObjectTypeUtil.createObjectRef(Constants.USER_OBJECT_TEMPLATE_OID, ObjectTypes.OBJECT_TEMPLATE));
+						valuesToAdd.add(u.asPrismContainerValue());
+					}
+					if (orgOpc == null) {
+						ObjectPolicyConfigurationType o = new ObjectPolicyConfigurationType(getPrismContext());
+						o.setType(OrgType.COMPLEX_TYPE);
+						o.setObjectTemplateRef(ObjectTypeUtil.createObjectRef(Constants.ORG_OBJECT_TEMPLATE_OID, ObjectTypes.OBJECT_TEMPLATE));
+						valuesToAdd.add(o.asPrismContainerValue());
+					}
+					if (!valuesToAdd.isEmpty()) {
+						ObjectDelta<SystemConfigurationType> delta = (ObjectDelta<SystemConfigurationType>) DeltaBuilder
+								.deltaFor(SystemConfigurationType.class, getPrismContext())
+								.item(SystemConfigurationType.F_DEFAULT_OBJECT_POLICY_CONFIGURATION).add(valuesToAdd)
+								.asObjectDelta(SystemObjectsType.SYSTEM_CONFIGURATION.value());
+						LOGGER.info("Setting object templates for user and/or org.");
+						getModelService()
+								.executeChanges(Collections.<ObjectDelta<? extends ObjectType>>singleton(delta), null, task, task.getResult());
+					}
+				} catch (CommonException | RuntimeException e) {
+					error("Couldn't check/set user and org templates: " + e.getMessage());
+					throw new SystemException("Couldn't check/set user and org templates", e);
+				}
+				return null;
+			}
+		});
+	}
+
+	private PrismObject<UserType> createObjects(final String email, final String organization, final String password, final String givenName,
+			final String familyName, final String thingSpeakApiKey) {
+		return runPrivileged(new Producer<PrismObject<UserType>>() {
+			@Override
+			public PrismObject<UserType> run() {
 				Task task = createAnonymousTask(OPERATION_CREATE_OBJECTS);
 				try {
 					OrgType org = createOrg(email, organization, thingSpeakApiKey, task);
-					createUser(email, givenName, familyName, password, org, task);
+					UserType user = createUser(email, givenName, familyName, password, org, task);
 					createResource(org, task);
+					return getModelService().getObject(UserType.class, user.getOid(), null, task, task.getResult());
 				} catch (CommonException|EncryptionException e) {
 					throw new SystemException(e);
 				}
-				return null;
 			}
 		});
 	}
@@ -184,6 +249,7 @@ public class PageSelfRegister extends PageBase {
 		user.setFullName(PolyStringType.fromOrig(givenName + " " + familyName));
 		user.setEmailAddress(email);
 		user.setCredentials(createCredentials(password));
+		user.getEmployeeType().add("customer-admin");
 		// assignments
 		user.getAssignment().add(ObjectTypeUtil.createAssignmentTo(org.asPrismObject()));
 		AssignmentType managingAssignment = ObjectTypeUtil.createAssignmentTo(org.asPrismObject());
@@ -208,7 +274,7 @@ public class PageSelfRegister extends PageBase {
 
 		ResourceType resource = new ResourceType(getPrismContext());
 		resource.asPrismObject().setDefinition(template.asPrismObject().getDefinition().clone());
-		resource.setName(PolyStringType.fromOrig("ThingSpeak channels of " + PolyStringType.fromOrig(org.getName().getOrig())));
+		resource.setName(PolyStringType.fromOrig("ThingSpeak channels for " + PolyStringType.fromOrig(org.getName().getOrig())));
 		resource.setConnectorRef(template.getConnectorRef().clone());
 		resource.setConnectorConfiguration(template.getConnectorConfiguration().clone());
 		resource.setSchemaHandling(template.getSchemaHandling().clone());
