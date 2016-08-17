@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2010-2016 Evolveum
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<role oid="cac8d9ba-f6a1-4639-8dc0-37a7c5ce550e" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	  xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+	  xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3"
+	  xmlns:ri="http://midpoint.evolveum.com/xml/ns/public/resource/instance-3"
+	  xmlns:c="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
+	  xmlns:org="http://midpoint.evolveum.com/xml/ns/public/common/org-3">
+	<name>Customer user role</name>
+
+	<!-- ***** GUI ***** -->
+
+	<authorization>
+
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfDashboard</action>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfProfile</action>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#selfCredentials</action>
+
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#user</action>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#userDetails</action>
+
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#services</action>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#service</action>
+
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgStruct</action>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgTree</action>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-ui-3#orgUnit</action>
+	</authorization>
+
+	<!-- ***** Model ***** -->
+
+	<!-- From End User role (reduced) -->
+	<authorization>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+		<object>
+			<special>self</special>
+		</object>
+	</authorization>
+	<authorization>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#changeCredentials</action>
+		<phase>request</phase>
+		<object>
+			<special>self</special>
+		</object>
+		<c:item>credentials</c:item>
+	</authorization>
+	<authorization>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#modify</action>
+		<phase>execution</phase>
+		<object>
+			<special>self</special>
+		</object>
+		<c:item>credentials</c:item>
+	</authorization>
+
+	<!-- Story-specific settings -->
+
+	<authorization>
+		<name>Read services</name>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+		<object>
+			<type>ServiceType</type>
+			<orgRelation>
+				<scope>allDescendants</scope>
+			</orgRelation>
+		</object>
+		<item>name</item>
+		<item>displayName</item>
+		<item>description</item>
+		<item>identifier</item>
+		<item>extension/readKey</item>
+	</authorization>
+
+	<authorization>
+		<name>Read orgs</name>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+		<object>
+			<type>OrgType</type>
+			<orgRelation>
+				<scope>allDescendants</scope>
+			</orgRelation>
+		</object>
+		<item>name</item>
+		<item>displayName</item>
+		<item>description</item>
+	</authorization>
+
+	<authorization>
+		<name>Read orgs</name>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+		<object>
+			<type>OrgType</type>
+			<orgRelation>
+				<scope>allAncestors</scope>
+				<includeReferenceOrg>true</includeReferenceOrg>
+			</orgRelation>
+		</object>
+		<item>name</item>
+		<item>displayName</item>
+		<item>description</item>
+	</authorization>
+
+	<authorization>  <!-- just to fix 'access denied' errors on Self dashboard -->
+		<name>Read roles</name>
+		<action>http://midpoint.evolveum.com/xml/ns/public/security/authorization-model-3#read</action>
+		<object>
+			<type>RoleType</type>
+		</object>
+		<item>name</item>
+		<item>displayName</item>
+		<item>description</item>
+	</authorization>
+
+	<adminGuiConfiguration>
+		<objectForms>
+			<objectForm>
+				<type>OrgType</type>
+				<formSpecification>
+					<title>Measurements</title>
+					<panelClass>com.evolveum.smartwidgets.gui.forms.MeasurementsTabPanel</panelClass>
+				</formSpecification>
+				<includeDefaultForms>true</includeDefaultForms>
+			</objectForm>
+		</objectForms>
+	</adminGuiConfiguration>
+
+	<requestable>false</requestable>
+</role>

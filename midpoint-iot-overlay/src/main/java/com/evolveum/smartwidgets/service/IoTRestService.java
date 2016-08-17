@@ -112,7 +112,8 @@ public class IoTRestService {
 		// Find the customer (org)
 
 		ObjectQuery orgQuery = QueryBuilder.queryFor(OrgType.class, prismContext)
-				.item(OrgType.F_EXTENSION, Constants.REGISTRATION_LOOKUP_KEY_QNAME).eq(lookupKey)
+				.item(OrgType.F_ORG_TYPE).eq("customer")
+				.and().item(OrgType.F_EXTENSION, Constants.REGISTRATION_LOOKUP_KEY_QNAME).eq(lookupKey)
 				.build();
 
 		List<PrismObject<OrgType>> orgs = modelService.searchObjects(OrgType.class, orgQuery, null, task, result);

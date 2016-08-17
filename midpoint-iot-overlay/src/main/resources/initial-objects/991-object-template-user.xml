@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2010-2016 Evolveum
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<objectTemplate oid="8ac75a6b-f87c-4c42-8e6d-f7376d2bbb68"
+   xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+   xmlns='http://midpoint.evolveum.com/xml/ns/public/common/common-3'
+   xmlns:c='http://midpoint.evolveum.com/xml/ns/public/common/common-3'
+   xmlns:t='http://prism.evolveum.com/xml/ns/public/types-3'
+   xmlns:org="http://midpoint.evolveum.com/xml/ns/public/common/org-3"
+   xmlns:q="http://prism.evolveum.com/xml/ns/public/query-3">
+    <name>User Template</name>
+
+    <item>
+        <ref>employeeType</ref>
+        <valueEnumerationRef oid="5783c174-d141-11e4-bb29-001e8c717e5b"/>
+    </item>
+
+	<mapping>
+		<name>Fullname</name>
+		<authoritative>true</authoritative>
+		<strength>strong</strength>
+		<source>
+			<path>givenName</path>
+		</source>
+		<source>
+			<path>familyName</path>
+		</source>
+		<expression>
+			<script>
+				<code>basic.concatName(givenName, familyName)</code>
+			</script>
+		</expression>
+		<target>
+			<path>fullName</path>
+		</target>
+	</mapping>
+
+	<mapping>
+		<name>Customer admin role assignment</name>
+		<strength>strong</strength>
+		<source>
+			<path>$user/employeeType</path>
+		</source>
+		<expression>
+			<assignmentTargetSearch>
+				<targetType>c:RoleType</targetType>
+				<oid>fb76ac8b-3d72-4d54-8c4b-9b450fb93f12</oid>
+			</assignmentTargetSearch>
+		</expression>
+		<target>
+			<path>assignment</path>
+		</target>
+		<condition>
+			<script>
+				<code>employeeType == 'customer-admin'</code>
+			</script>
+		</condition>
+	</mapping>
+
+	<mapping>
+		<name>Customer user role assignment</name>
+		<strength>strong</strength>
+		<source>
+			<path>$user/employeeType</path>
+		</source>
+		<expression>
+			<assignmentTargetSearch>
+				<targetType>c:RoleType</targetType>
+				<oid>cac8d9ba-f6a1-4639-8dc0-37a7c5ce550e</oid>
+			</assignmentTargetSearch>
+		</expression>
+		<target>
+			<path>assignment</path>
+		</target>
+		<condition>
+			<script>
+				<code>employeeType == 'customer-admin' || employeeType == 'customer-user'</code>
+			</script>
+		</condition>
+	</mapping>
+</objectTemplate>
